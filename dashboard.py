@@ -138,6 +138,3 @@ plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
 st.pyplot(fig)
 
-st.markdown("---")
-st.markdown("Dashboard dibuat untuk Proyek Analisis Data - Dicoding")
-st.markdown("Dataset: E-Commerce Public Dataset")
