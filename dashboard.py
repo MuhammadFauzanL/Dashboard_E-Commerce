@@ -11,36 +11,31 @@ def load_data():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_dir, "data")
     
-    orders_df = pd.read_csv(os.path.join(data_dir, "orders_dataset.csv"))
-    order_items_df = pd.read_csv(os.path.join(data_dir, "order_items_dataset.csv"))
-    products_df = pd.read_csv(os.path.join(data_dir, "products_dataset.csv"))
-    customers_df = pd.read_csv(os.path.join(data_dir, "customers_dataset.csv"))
-    sellers_df = pd.read_csv(os.path.join(data_dir, "sellers_dataset.csv"))
-    order_payments_df = pd.read_csv(os.path.join(data_dir, "order_payments_dataset.csv"))
+    main_data = pd.read_csv(os.path.join(data_dir, "main_data.csv"))
     
     datetime_cols = ['order_purchase_timestamp', 'order_approved_at', 
                      'order_delivered_carrier_date', 'order_delivered_customer_date',
                      'order_estimated_delivery_date']
     for col in datetime_cols:
-        if col in orders_df.columns:
-            orders_df[col] = pd.to_datetime(orders_df[col])
+        if col in main_data.columns:
+            main_data[col] = pd.to_datetime(main_data[col])
     
-    return orders_df, order_items_df, products_df, customers_df, sellers_df, order_payments_df
+    return main_data
 
-orders_df, order_items_df, products_df, customers_df, sellers_df, order_payments_df = load_data()
+main_data = load_data()
 
 st.sidebar.title("E-Commerce Dashboard")
 st.sidebar.markdown("---")
 
-min_date = orders_df['order_purchase_timestamp'].min().date()
-max_date = orders_df['order_purchase_timestamp'].max().date()
+min_date = main_data['order_purchase_timestamp'].min().date()
+max_date = main_data['order_purchase_timestamp'].max().date()
 
 start_date = st.sidebar.date_input("Start Date", min_date, min_value=min_date, max_value=max_date)
 end_date = st.sidebar.date_input("End Date", max_date, min_value=min_date, max_value=max_date)
 
-filtered_orders = orders_df[
-    (orders_df['order_purchase_timestamp'].dt.date >= start_date) & 
-    (orders_df['order_purchase_timestamp'].dt.date <= end_date)
+filtered_data = main_data[
+    (main_data['order_purchase_timestamp'].dt.date >= start_date) & 
+    (main_data['order_purchase_timestamp'].dt.date <= end_date)
 ]
 
 st.title("E-Commerce Public Dataset Dashboard")
@@ -48,17 +43,15 @@ st.title("E-Commerce Public Dataset Dashboard")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    total_orders = len(filtered_orders)
+    total_orders = filtered_data['order_id'].nunique()
     st.metric("Total Orders", f"{total_orders:,}")
 
 with col2:
-    total_customers = filtered_orders['customer_id'].nunique()
+    total_customers = filtered_data['customer_id'].nunique()
     st.metric("Total Customers", f"{total_customers:,}")
 
 with col3:
-    order_ids = filtered_orders['order_id'].tolist()
-    filtered_items = order_items_df[order_items_df['order_id'].isin(order_ids)]
-    total_revenue = filtered_items['price'].sum()
+    total_revenue = filtered_data['price'].sum()
     st.metric("Total Revenue", f"R$ {total_revenue:,.2f}")
 
 with col4:
@@ -72,9 +65,9 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Tren Pesanan Bulanan")
     
-    monthly_orders = filtered_orders.groupby(
-        filtered_orders['order_purchase_timestamp'].dt.to_period('M')
-    ).size().reset_index(name='order_count')
+    monthly_orders = filtered_data.groupby(
+        filtered_data['order_purchase_timestamp'].dt.to_period('M')
+    )['order_id'].nunique().reset_index(name='order_count')
     monthly_orders['order_purchase_timestamp'] = monthly_orders['order_purchase_timestamp'].astype(str)
     
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -89,7 +82,7 @@ with col1:
 with col2:
     st.subheader("Distribusi Pelanggan per Kota (Top 10)")
     
-    customer_city = customers_df['customer_city'].value_counts().head(10)
+    customer_city = filtered_data.groupby('customer_city')['customer_id'].nunique().sort_values(ascending=False).head(10)
     
     fig, ax = plt.subplots(figsize=(10, 5))
     colors = sns.color_palette("Blues_r", len(customer_city))
@@ -107,7 +100,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Metode Pembayaran")
     
-    payment_methods = order_payments_df['payment_type'].value_counts()
+    payment_methods = filtered_data['payment_type'].value_counts()
     
     fig, ax = plt.subplots(figsize=(8, 8))
     colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99','#ff99cc']
@@ -119,7 +112,7 @@ with col1:
 with col2:
     st.subheader("Status Pesanan")
     
-    order_status = filtered_orders['order_status'].value_counts()
+    order_status = filtered_data['order_status'].value_counts()
     
     fig, ax = plt.subplots(figsize=(10, 5))
     colors = sns.color_palette("Set2", len(order_status))
@@ -134,7 +127,7 @@ st.markdown("---")
 
 st.subheader("Distribusi Penjual per Kota (Top 10)")
 
-seller_city = sellers_df['seller_city'].value_counts().head(10)
+seller_city = filtered_data.groupby('seller_city')['seller_id'].nunique().sort_values(ascending=False).head(10)
 
 fig, ax = plt.subplots(figsize=(12, 5))
 colors = sns.color_palette("Greens_r", len(seller_city))
